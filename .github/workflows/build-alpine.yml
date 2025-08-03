@@ -39,8 +39,7 @@ jobs:
     - name: Build binary
       run: |
         cd memos
-        GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o memos ./bin/memos/main.go && rm -f artifact/* && cp memos artifact/memos.exe && cd artifact && tar -czvf ../memos-windows-amd64.tar.gz * && cd ..
-        GOOS=alpine GOARCH=amd64 CGO_ENABLED=0 go build -o memos ./bin/memos/main.go && rm -f artifact/* && cp memos artifact/memos.exe && cd artifact && tar -czvf ../memos-alpine-amd64.tar.gz * && cd ..
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o memos ./bin/memos/main.go && rm -f artifact/* && cp memos artifact/memos.exe && cd artifact && tar -czvf ../memos-alpine-amd64.tar.gz * && cd ..
         cd ..
         
     - name: Upload artifact
@@ -48,7 +47,6 @@ jobs:
       with:
         name: memos-pre-built
         path: |            
-            memos/memos-windows-amd64.tar.gz
             memos/memos-alpine-amd64.tar.gz
             
     - name: Generate release tag
@@ -62,7 +60,6 @@ jobs:
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         files: |
-            memos/memos-windows-amd64.tar.gz
             memos/memos-alpine-amd64.tar.gz
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
