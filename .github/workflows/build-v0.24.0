@@ -1,1 +1,70 @@
+name: Build
 
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 'stable'
+        check-latest: true
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Clone Repo
+      run: |
+        git clone -b v0.24.0 https://github.com/usememos/memos
+        npm install -g pnpm
+
+    - name: Build Frontend
+      run: |
+        cd memos/web
+        corepack enable && pnpm i --frozen-lockfile
+        pnpm build
+        mkdir -p ../artifact
+        rm -rf ../server/router/frontend/dist
+        mkdir -p ../server/router/frontend
+        cp -R dist ../server/router/frontend/dist
+        cd ../..
+
+    - name: Build binary
+      run: |
+        cd memos
+        GOOS=alpine GOARCH=amd64 CGO_ENABLED=0 go build -o memos ./bin/memos/main.go && rm -f artifact/* && cp memos artifact/memos.exe && cd artifact && tar -czvf ../memos-alpine-amd64.tar.gz * && cd ..
+        cd ..
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@main
+      with:
+        name: memos-pre-built
+        path: |
+            memos/memos-alpine-amd64.tar.gz
+            
+    - name: Generate release tag
+      id: tag
+      run: echo "release_tag=v0.24.0" >> $GITHUB_OUTPUT
+
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        files: |
+            memos/memos-alpine-amd64.tar.gz
+    - name: Delete workflow runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        retain_days: 1
+        keep_minimum_runs: 8
